@@ -7,9 +7,14 @@
 
 ### Known Issues
 
-- `useTasks.addTask` の上限チェックに競合状態の可能性あり。`useCallback` の依存配列 `[tasks.length]` が原因で、同一レンダリングサイクル内に複数回 `addTask` が呼ばれた際に古い `tasks.length` を参照し、100 件上限を超えてタスクが追加され得る。通常の UI 操作では発生しないが、自動化呼び出し等で再現可能。
-- `storage.ts` の `validateTask` は型存在チェック中心で、文字数上限・タグ数上限・日付フォーマットの厳密検証は未実装。手動改ざんに対する堅牢性に改善余地あり。
+- `storage.ts` の `validateTask` は型存在チェック中心で、`id` / `title` / `description` / `tags` の最大長、`dueDate` の `YYYY-MM-DD` フォーマット検証、`createdAt` / `updatedAt` の ISO 8601 検証、タグ配列の要素数上限が未実装。Security / QA Bot 指摘済み。手動 `localStorage` 改ざんで小規模 DoS（描画負荷・表示崩れ）を誘発し得る。
+- `App.tsx` の期限判定 (`isDueWithin` / `isOverdue` / `isDueToday`) は `new Date()` 依存でタイムゾーンに依存。日付境界で環境差が発生する余地あり。Review Bot 指摘。
 - 開発依存 `vite ^5.4.10` 経由の `esbuild <=0.24.2` に Dev Server 脆弱性 (`npm audit` 検出)。本番ビルド成果物には影響しない。
+
+### Documentation
+
+- `README.md` の Repository 表記を `(public)` から `(private)` へ修正し、`package.json` の `"private": true` と整合を取った（Review / Security Bot 指摘）。
+- `README.md` 「既知の制約」を最新のレビュー結果（バリデーション欠如・タイムゾーン依存）に合わせて更新。
 
 ## [0.1.0] - 2026-05-15
 
@@ -46,7 +51,7 @@
 
 ### Repository
 
-- 新規 public Repository `local-task-manager` を `gh repo create` で自動作成・push。
+- 新規 private Repository `local-task-manager-20260515-202654` を `gh repo create` で自動作成・push（Leader 方針「既定 private」に従う）。
 
 ## Decision Log
 
@@ -68,10 +73,11 @@
 - 採用: 警告バナーで通知後、ストレージを破棄して初期状態に戻す。
 - 棄却: 部分復旧（複雑性増・テスト負担増）、サイレント破棄（ユーザー認知できない）。
 
-### 2026-05-15: Repository 公開設定を public とする
+### 2026-05-15: Repository 公開設定を private とする
 
-- 背景: 機密情報を含まないローカル完結アプリのため public で問題なし。
-- 採用: `gh repo create local-task-manager --public --source=. --remote=origin --push`。
+- 背景: 個人用ローカルアプリで公開する積極的理由がないため、Leader 方針「既定 private」に従う。
+- 採用: `gh repo create local-task-manager-20260515-202654 --private --source=. --remote=origin --push`。
+- 補足: `package.json` も `"private": true` で整合済。README の表記も `(private)` に統一（2026-05-18 修正）。
 
 ### 2026-05-15: テーマは控えめなダークテーマ単一
 

@@ -161,4 +161,93 @@ describe('storage', () => {
       cause: 'unknown',
     });
   });
+
+  // New test cases for Security Agent's findings
+  it('should return "corrupted" for a task with an excessively long title', () => {
+    const longTitleTask = { ...MOCK_TASK_BASE, title: 'a'.repeat(121) }; // Exceeds 120 char limit
+    localStorage.setItem('local-task-manager:tasks:v1', JSON.stringify([longTitleTask]));
+
+    const result = loadTasks();
+    expect(result.kind).toBe('corrupted');
+    if (result.kind === 'corrupted') {
+      expect(result.reason).toBe('corrupted_storage');
+    }
+  });
+
+  it('should return "corrupted" for a task with an excessively long description', () => {
+    const longDescTask = { ...MOCK_TASK_BASE, description: 'a'.repeat(2001) }; // Exceeds 2000 char limit
+    localStorage.setItem('local-task-manager:tasks:v1', JSON.stringify([longDescTask]));
+
+    const result = loadTasks();
+    expect(result.kind).toBe('corrupted');
+    if (result.kind === 'corrupted') {
+      expect(result.reason).toBe('corrupted_storage');
+    }
+  });
+
+  it('should return "corrupted" for a task with an excessively long ID', () => {
+    const longIdTask = { ...MOCK_TASK_BASE, id: 'a'.repeat(200) }; // Arbitrary long ID
+    localStorage.setItem('local-task-manager:tasks:v1', JSON.stringify([longIdTask]));
+
+    const result = loadTasks();
+    expect(result.kind).toBe('corrupted');
+    if (result.kind === 'corrupted') {
+      expect(result.reason).toBe('corrupted_storage');
+    }
+  });
+
+  it('should return "corrupted" for a task with an excessively long createdAt timestamp', () => {
+    const longCreatedAtTask = { ...MOCK_TASK_BASE, createdAt: 'a'.repeat(200) }; // Arbitrary long timestamp
+    localStorage.setItem('local-task-manager:tasks:v1', JSON.stringify([longCreatedAtTask]));
+
+    const result = loadTasks();
+    expect(result.kind).toBe('corrupted');
+    if (result.kind === 'corrupted') {
+      expect(result.reason).toBe('corrupted_storage');
+    }
+  });
+
+  it('should return "corrupted" for a task with an excessively long updatedAt timestamp', () => {
+    const longUpdatedAtTask = { ...MOCK_TASK_BASE, updatedAt: 'a'.repeat(200) }; // Arbitrary long timestamp
+    localStorage.setItem('local-task-manager:tasks:v1', JSON.stringify([longUpdatedAtTask]));
+
+    const result = loadTasks();
+    expect(result.kind).toBe('corrupted');
+    if (result.kind === 'corrupted') {
+      expect(result.reason).toBe('corrupted_storage');
+    }
+  });
+
+  it('should return "corrupted" for a task with an invalid dueDate format', () => {
+    const invalidDueDateTask = { ...MOCK_TASK_BASE, dueDate: '2023/12/31' }; // Invalid format, expects YYYY-MM-DD
+    localStorage.setItem('local-task-manager:tasks:v1', JSON.stringify([invalidDueDateTask]));
+
+    const result = loadTasks();
+    expect(result.kind).toBe('corrupted');
+    if (result.kind === 'corrupted') {
+      expect(result.reason).toBe('corrupted_storage');
+    }
+  });
+
+  it('should return "corrupted" for a task with an excessive number of tags', () => {
+    const manyTagsTask = { ...MOCK_TASK_BASE, tags: Array.from({ length: 20 }, (_, i) => `tag-${i}`) }; // More than a reasonable limit, e.g. 10
+    localStorage.setItem('local-task-manager:tasks:v1', JSON.stringify([manyTagsTask]));
+
+    const result = loadTasks();
+    expect(result.kind).toBe('corrupted');
+    if (result.kind === 'corrupted') {
+      expect(result.reason).toBe('corrupted_storage');
+    }
+  });
+
+  it('should return "corrupted" for a task with an excessively long tag', () => {
+    const longTagTask = { ...MOCK_TASK_BASE, tags: ['a'.repeat(51)] }; // Arbitrary long tag, e.g. > 50 chars
+    localStorage.setItem('local-task-manager:tasks:v1', JSON.stringify([longTagTask]));
+
+    const result = loadTasks();
+    expect(result.kind).toBe('corrupted');
+    if (result.kind === 'corrupted') {
+      expect(result.reason).toBe('corrupted_storage');
+    }
+  });
 });
