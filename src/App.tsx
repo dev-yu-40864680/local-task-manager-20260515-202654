@@ -3,6 +3,7 @@ import { KanbanBoard } from './components/KanbanBoard';
 import { TaskModal } from './components/TaskModal';
 import { FilterBar, type FilterState } from './components/FilterBar';
 import { useTasks, type DraftTask } from './hooks/useTasks';
+import { UI_MESSAGES } from './messages';
 import type { Task, TaskStatus } from './types';
 import { PRIORITY_ORDER, STATUS_ORDER, TASK_LIMIT } from './types';
 
@@ -115,7 +116,9 @@ export default function App() {
     }
     const res = api.addTask(draft);
     if (!res.ok) {
-      setLimitError(res.error);
+      if (res.reason === 'limit_reached') {
+        setLimitError(UI_MESSAGES[res.reason]);
+      }
       return;
     }
     setModalOpen(false);
@@ -151,8 +154,7 @@ export default function App() {
       {api.corruptionMessage && (
         <div className="banner banner-warn" role="alert">
           <strong>保存データが破損していました。</strong>
-          <span>{api.corruptionMessage}</span>
-          <span>破損データを破棄し、空の状態から再開しました。</span>
+          <span>{UI_MESSAGES[api.corruptionMessage]}</span>
           <button type="button" className="btn-ghost-sm" onClick={api.acknowledgeCorruption}>
             閉じる
           </button>
@@ -164,6 +166,16 @@ export default function App() {
           <strong>追加できません:</strong>
           <span>{limitError}</span>
           <button type="button" className="btn-ghost-sm" onClick={() => setLimitError(null)}>
+            閉じる
+          </button>
+        </div>
+      )}
+
+      {api.saveErrorMessage && (
+        <div className="banner banner-error" role="alert">
+          <strong>保存できません:</strong>
+          <span>{UI_MESSAGES[api.saveErrorMessage]}</span>
+          <button type="button" className="btn-ghost-sm" onClick={api.acknowledgeSaveError}>
             閉じる
           </button>
         </div>

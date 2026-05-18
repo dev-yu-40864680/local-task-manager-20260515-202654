@@ -1,4 +1,6 @@
 import type { Task, TaskPriority, TaskStatus } from './types';
+import type { UiMessageReason } from './messages';
+import { TASK_LIMIT } from './types';
 
 const STORAGE_KEY = 'local-task-manager:tasks:v1';
 
@@ -8,7 +10,13 @@ const VALID_PRIORITY: TaskPriority[] = ['low', 'medium', 'high'];
 export type LoadResult =
   | { kind: 'ok'; tasks: Task[] }
   | { kind: 'empty' }
-  | { kind: 'corrupted'; reason: string };
+  | { kind: 'corrupted'; reason: Extract<UiMessageReason, 'corrupted_storage'> };
+
+export type StorageFailureCause = 'quota_exceeded' | 'storage_unavailable' | 'unknown';
+
+export type SaveResult =
+  | { ok: true }
+  | { ok: false; reason: Extract<UiMessageReason, 'save_failed'>; cause: StorageFailureCause };
 
 function isString(v: unknown): v is string {
   return typeof v === 'string';
@@ -42,34 +50,51 @@ export function loadTasks(): LoadResult {
   try {
     raw = window.localStorage.getItem(STORAGE_KEY);
   } catch (err) {
-    return { kind: 'corrupted', reason: `localStorage 読み込み失敗: ${(err as Error).message}` };
+    return { kind: 'corrupted', reason: 'corrupted_storage' };
   }
   if (raw === null) return { kind: 'empty' };
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { kind: 'corrupted', reason: '保存データがJSONとして解釈できません' };
+    return { kind: 'corrupted', reason: 'corrupted_storage' };
   }
   if (!Array.isArray(parsed)) {
-    return { kind: 'corrupted', reason: '保存データが配列ではありません' };
+    return { kind: 'corrupted', reason: 'corrupted_storage' };
+  }
+  if (parsed.length > TASK_LIMIT) {
+    return { kind: 'corrupted', reason: 'corrupted_storage' };
   }
   const tasks: Task[] = [];
   for (const item of parsed) {
     const validated = validateTask(item);
     if (!validated) {
-      return { kind: 'corrupted', reason: '保存タスクの形式が不正です' };
+      return { kind: 'corrupted', reason: 'corrupted_storage' };
     }
     tasks.push(validated);
   }
   return { kind: 'ok', tasks };
 }
 
-export function saveTasks(tasks: Task[]): void {
+function classifyStorageError(err: unknown): StorageFailureCause {
+  if (err instanceof DOMException) {
+    if (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      return 'quota_exceeded';
+    }
+    if (err.name === 'SecurityError') {
+      return 'storage_unavailable';
+    }
+  }
+  return 'unknown';
+}
+
+export function saveTasks(tasks: Task[]): SaveResult {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    return { ok: true };
   } catch (err) {
     console.error('localStorage 保存に失敗しました', err);
+    return { ok: false, reason: 'save_failed', cause: classifyStorageError(err) };
   }
 }
 
